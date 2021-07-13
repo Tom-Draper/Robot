@@ -57,23 +57,24 @@ class Robot:
         sensor.end_point = sensor_end
         for i, (x, y) in enumerate(zip(xs, ys)):
             if (int(round(x)), int(round(y))) in obstacles.coords:
-                # print("FOUND OBSTACLE")
+                print("FOUND OBSTACLE")
                 sensor.end_point = (x, y)
                 # Suggest rotate right, harder rotate the closer the obstacle
                 return max_robot_rotation * (1 - (i/len(xs)))
+            
         return 0
   
     def checkSensors(self):
         # Sum all of the suggested rotations give by each sensor
         rotation = 0
         if random.randint(0, 1) == 0:
-            rotation += self.checkSensor(self.sensor_centre, 1.2)
+            rotation += self.checkSensor(self.sensor_centre, 1)
         else:
-            rotation += self.checkSensor(self.sensor_centre, -1.2)
-        rotation += self.checkSensor(self.sensor_mid_left, -1.0)
-        rotation += self.checkSensor(self.sensor_mid_right, 1.0)
-        rotation += self.checkSensor(self.sensor_left, -0.8)
-        rotation += self.checkSensor(self.sensor_right, 0.8)
+            rotation += self.checkSensor(self.sensor_centre, -1)
+        rotation += self.checkSensor(self.sensor_mid_left, -0.8)
+        rotation += self.checkSensor(self.sensor_mid_right, 0.8)
+        rotation += self.checkSensor(self.sensor_left, -0.6)
+        rotation += self.checkSensor(self.sensor_right, 0.6)
         return rotation
             
     def move(self):
@@ -97,7 +98,15 @@ class Obstacles:
     def __init__(self, plot_size):
         self.coords = set()
         self.obstacles = [[(55, 55), (55, 65), (65, 65), (65, 55)], 
-                          [(10, 80), (20, 80), (20, 40)]]
+                          [(10, 80), (20, 80), (20, 40)],
+                          [(55, 15), (55, 25), (80, 25), (80, 15)], 
+                          ]
+        
+        self.obstacles = [ [(10, 10), (10, 45), (45, 45), (45, 10)],
+                          [(55, 55), (55, 90), (90, 90), (90, 55)],
+                          [(10, 55), (10, 90), (45, 90), (45, 55)],
+                          [(55, 10), (55, 45), (90, 45), (90, 10)]
+                          ]
         
         self.addOuterWalls(plot_size)
         
@@ -224,9 +233,10 @@ def animate(i):
 
 
 
-speed = 1
+speed = 1.5
 plot_size = 100
 robot = Robot(speed=speed, start_x=plot_size//2, start_y=plot_size//2)
+robot = Robot(speed=speed, start_x=7, start_y=7)
 obstacles = Obstacles(plot_size)
 
 fig = plt.figure()

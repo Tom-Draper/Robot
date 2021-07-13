@@ -1,12 +1,5 @@
-sensors():
-#     plt.plot([robot.x, robot.sensor_centre.end_point[0]], 
-#              [robot.y, robot.sensor_centre.end_point[1]], 
-#              color='r')
-    
-#     plt.plot([robot.x, robot.sensor_left.end_point[0]], 
-#             [robot.y, robot.sensor_left.end_point[1]], 
-#             color='r')
-    
-#     plt.plot([robot.x, robot.sensor_right.end_point[0]], 
-#             [robot.y, robot.sensor_right.end_point[1]], 
-#             color
+(10, 10), (10, 45), (45, 45), (45, 10)],
+                          [(55, 55), (55, 90), (90, 90), (90, 55)],
+                          [(10, 55), (10, 90), (45, 90), (45, 55)],
+                          [(55, 10), (55, 45), (90, 45), (90, 10)],
+                          ]
