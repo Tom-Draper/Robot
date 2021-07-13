@@ -36,18 +36,20 @@ class Sensor:
 
 
 class Robot:
-    def __init__(self, speed=1, start_x=50, start_y=50, direction=Vector(0, 1), display_size=10, colour='b', sensor_centre_size=10, sensor_mid_size=10, sensor_wide_size=10):
+    def __init__(self, speed=1, start_x=50, start_y=50, direction=None, display_size=10, colour='b', sensor_centre_size=10, sensor_mid_size=10, sensor_wide_size=10):
         self.speed = speed
         self.x = start_x
         self.y = start_y
         
-        self.direction = direction
+        self.direction = Vector(0, 1)
         
         self.sensor_left = Sensor(self, sensor_wide_size, 1.5708)  # 90 degree left
         self.sensor_mid_left = Sensor(self, sensor_mid_size, 0.7853)  # 45 degree left
         self.sensor_centre = Sensor(self, sensor_centre_size, 0)
         self.sensor_mid_right = Sensor(self, sensor_mid_size, -0.7853)  # 45 degree right
         self.sensor_right = Sensor(self, sensor_wide_size, -1.5708)  # 90 degree right
+        
+        self.sensors = [self.sensor_left, self.sensor_mid_left, self.sensor_centre, self.sensor_mid_right, self.sensor_right]
         
         self.display_size = display_size  # Display size
         self.colour = colour
@@ -56,7 +58,7 @@ class Robot:
         # individually removed with each animation loop
         self.graph_components = []
     
-    def checkSensor(self, sensor, max_robot_rotation):
+    def checkSensor(self, sensor, max_robot_rotation, obstacles):
         # Get vector direction for this sensor
         sensor_x, sensor_y = self.direction.rotated(sensor.rotation)
 
@@ -77,31 +79,31 @@ class Robot:
             
         return 0
   
-    def checkSensors(self):
+    def checkSensors(self, obstacles):
         # Sum all of the suggested rotations give by each sensor
         rotation = 0
         if random.randint(0, 1) == 0:
-            rotation += self.checkSensor(self.sensor_centre, 1.2)
+            rotation += self.checkSensor(self.sensor_centre, 1.2, obstacles)
         else:
-            rotation += self.checkSensor(self.sensor_centre, -1.2)
-        rotation += self.checkSensor(self.sensor_mid_left, -0.85)
-        rotation += self.checkSensor(self.sensor_mid_right, 0.85)
-        rotation += self.checkSensor(self.sensor_left, -0.6)
-        rotation += self.checkSensor(self.sensor_right, 0.6)
+            rotation += self.checkSensor(self.sensor_centre, -1.2, obstacles)
+        rotation += self.checkSensor(self.sensor_mid_left, -0.85, obstacles)
+        rotation += self.checkSensor(self.sensor_mid_right, 0.85, obstacles)
+        rotation += self.checkSensor(self.sensor_left, -0.6, obstacles)
+        rotation += self.checkSensor(self.sensor_right, 0.6, obstacles)
         return rotation
             
-    def move(self):
-        print("MOVING", self.direction.x, self.direction.y)
-        self.x += self.direction.x * speed
-        self.y += self.direction.y * speed
+    def move(self, obstacles):
+        # print("MOVING", self.direction.x, self.direction.y)
+        self.x += self.direction.x * self.speed
+        self.y += self.direction.y * self.speed
         
-        rotation = self.checkSensors()
-        
+        rotation = self.checkSensors(obstacles)
+                
         # If no rotation suggested, random walk
         if rotation == 0:
             rotation = 0.08 * np.random.randn()
         
-        print("ROTATING BY:", rotation)
+        # print("ROTATING BY:", rotation)
         self.direction.rotate(rotation)
 
 
@@ -183,7 +185,6 @@ def interval_range(p1, p2):
     else:
         ys = np.arange(start=p1[1], stop=p2[1], step=y_step)
         
-    
     # Round each value to the nearest integer
     xs = map(int, xs)
     ys = map(int, ys)
@@ -192,94 +193,59 @@ def interval_range(p1, p2):
     return points
 
 
-def display_obstacles():    
+def display_obstacles(obstacles):    
     for obstacle in obstacles.obstacles:        
         plt.plot([coord[0] for coord in obstacle] + [obstacle[0][0]], [coord[1] for coord in obstacle] + [obstacle[0][1]])
-
-# def display_sensors():
-#     plt.plot([robot.x, robot.x + (robot.sensor_centre.length * robot.direction.x)], 
-#              [robot.y, robot.y + (robot.sensor_centre.length * robot.direction.y)], 
-#              color='r')
-    
-#     rotated_left_x, rotated_left_y = robot.direction.rotated(robot.sensor_mid_left.rotation)
-#     plt.plot([robot.x, robot.x + (robot.sensor_mid_left.length * rotated_left_x)], 
-#             [robot.y, robot.y + (robot.sensor_mid_left.length * rotated_left_y)], 
-#             color='r')
-    
-#     rotated_right_x, rotated_right_y = robot.direction.rotated(robot.sensor_mid_right.rotation)
-#     plt.plot([robot.x, robot.x + (robot.sensor_mid_right.length * rotated_right_x)], 
-#             [robot.y, robot.y + (robot.sensor_mid_right.length * rotated_right_y)], 
-#             color='r')
-    
-#     rotated_left_x, rotated_left_y = robot.direction.rotated(robot.sensor_left.rotation)
-#     plt.plot([robot.x, robot.x + (robot.sensor_left.length * rotated_left_x)], 
-#             [robot.y, robot.y + (robot.sensor_left.length * rotated_left_y)], 
-#             color='r')
-    
-#     rotated_right_x, rotated_right_y = robot.direction.rotated(robot.sensor_right.rotation)
-#     plt.plot([robot.x, robot.x + (robot.sensor_right.length * rotated_right_x)], 
-#             [robot.y, robot.y + (robot.sensor_right.length * rotated_right_y)], 
-#             color='r')
     
 def display_sensors(robot):
-    c, = plt.plot([robot.x, robot.sensor_centre.end_point.x], 
-             [robot.y, robot.sensor_centre.end_point.y], 
-             color='r')
-    
-    ml, = plt.plot([robot.x, robot.sensor_mid_left.end_point.x], 
-            [robot.y, robot.sensor_mid_left.end_point.y], 
-            color='r')
-    
-    mr, = plt.plot([robot.x, robot.sensor_mid_right.end_point.x], 
-            [robot.y, robot.sensor_mid_right.end_point.y], 
-            color='r')
-    
-    l, = plt.plot([robot.x, robot.sensor_left.end_point.x], 
-            [robot.y, robot.sensor_left.end_point.y], 
-            color='r')
-    
-    r, = plt.plot([robot.x, robot.sensor_right.end_point.x], 
-            [robot.y, robot.sensor_right.end_point.y], 
-            color='r')
-    return [c, ml, mr, l, r]
+    graph_components = []
+    for sensor in robot.sensors:
+        component, = plt.plot([robot.x, sensor.end_point.x], [robot.y, sensor.end_point.y], color='r')
+        graph_components.append(component)
 
-def animate(i):
-    # Remove the previous robot plot
-    for sensor in robot1.graph_components:
-        sensor.remove()
-    for sensor in robot2.graph_components:
-        sensor.remove()
+    return graph_components
+
+def graph_robot(robot):
+    robot.graph_components = display_sensors(robot)
+    robot_plot, = plt.plot([robot.x], [robot.y], '.', color=robot.colour, markersize=robot.display_size)
+    robot.graph_components.append(robot_plot)
+    
+def animate(i, robots, obstacles):
+    for robot in robots:
+        # Remove the previous robot plot
+        for sensor in robot.graph_components:
+            sensor.remove()
+            
+        robot.move(obstacles)
         
-    robot1.move()
-    robot2.move()
+        graph_robot(robot)
+        
 
-    robot1.graph_components = display_sensors(robot1)
-    robot2.graph_components = display_sensors(robot2)
+def setup():
+    plot_size = 100
+    robot1 = Robot(start_x=plot_size//2, start_y=plot_size//2, colour='b')
+    robot2 = Robot(start_x=20, start_y=20, colour='g')
+    robots = [robot1, robot2]
     
-    r1_plot, = plt.plot([robot1.x], [robot1.y], '.', color=robot1.colour, markersize=robot1.display_size)
-    r2_plot, = plt.plot([robot2.x], [robot2.y], '.', color=robot2.colour, markersize=robot2.display_size)
+    obstacles = Obstacles(plot_size)
     
-    robot1.graph_components.append(r1_plot)
-    robot2.graph_components.append(r2_plot)
+    fig = plt.figure()
 
+    # Set up
+    display_obstacles(obstacles)
+    plt.xlim(0, plot_size)
+    plt.ylim(0, plot_size)
+    plt.gca().set_aspect('equal', adjustable='box')
+    
+    for robot in robots:
+        graph_robot(robot)
+    
+    return fig, robots, obstacles
 
+if __name__ == "__main__":
+    fig, robots, obstacles = setup()
 
+    ani = animation.FuncAnimation(fig, animate, fargs=(robots, obstacles), interval=50) 
 
-speed = 1.5
-plot_size = 100
+    plt.show()
 
-robot1 = Robot(speed=speed, start_x=plot_size//2, start_y=plot_size//2, colour='b')
-robot2 = Robot(speed=speed, start_x=20, start_y=20, colour='g')
-obstacles = Obstacles(plot_size)
-
-fig = plt.figure()
-
-# Set up
-display_obstacles()
-plt.xlim(0, plot_size)
-plt.ylim(0, plot_size)
-plt.gca().set_aspect('equal', adjustable='box')
-
-ani = animation.FuncAnimation(fig, animate, interval=1000) 
-
-plt.show()
