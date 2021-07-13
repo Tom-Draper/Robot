@@ -23,108 +23,81 @@ class Vector:
 
 
 class Sensor:
-    def __init__(self, length):
+    def __init__(self, length=10, rotation=0):
         self.length = length
+        self.end_point = None
+        self.rotation = rotation  # 0 for centre, 1.57 for left, -1.57 for right
 
 
 class Robot:
-    def __init__(self, plot_size):
-        self.x = plot_size//2 + 5
-        self.y = plot_size//2
+    def __init__(self, speed=1, start_x=50, start_y=50, direction=Vector(0, 1), sensor_centre_size=10, sensor_mid_size=10, sensor_wide_size=10):
+        self.speed = speed
+        self.x = start_x
+        self.y = start_y
         
-        self.direction = Vector(0, 1)  # Upwards
+        self.direction = direction
         
-        self.sensor_left = Sensor(10)
-        self.sensor_centre = Sensor(10)
-        self.sensor_right = Sensor(10)
+        self.sensor_left = Sensor(sensor_wide_size, 1.5708)  # 90 degree left
+        self.sensor_mid_left = Sensor(sensor_mid_size, 0.7853)  # 45 degree left
+        self.sensor_centre = Sensor(sensor_centre_size, 0)
+        self.sensor_mid_right = Sensor(sensor_mid_size, -0.7853)  # 45 degree right
+        self.sensor_right = Sensor(sensor_wide_size, -1.5708)  # 90 degree right
         
         self.size = 6  # Display size
-        
-    def checkCentreSensor(self, obstacles):
-        # Check central sensor
-        first = (self.x, self.y)
-        second = (self.x + (self.sensor_centre.length * self.direction.x), self.y + (self.sensor_centre.length * self.direction.y))
-        
-        xs, ys = interval_range(first, second)
-                    
-        for x, y in zip(xs, ys):
-            print((int(round(x)), int(round(y))))
-            if (int(round(x)), int(round(y))) in obstacles.coords:
-                print("FOUND OBSTACLE")
-                if random.randint(0, 1) == 0:
-                    # Suggest rotate slightly left
-                    return 0.7
-                else:
-                    # Suggest rotate slightly right
-                    return -0.7
-        for ob in obstacles.coords:
-            print(ob)
+    
+    def checkSensor(self, sensor, max_robot_rotation):
+        # Get vector directino of this sensor
+        sensor_x, sensor_y = robot.direction.rotated(sensor.rotation)
+
+        current_location = (self.x, self.y)
+        sensor_end = (self.x + (sensor.length * sensor_x), self.y + (sensor.length * sensor_y))
                 
-        return 0
-    
-    def checkLeftSensor(self, obstacles):
-        # Get direction vector of 90 degrees left
-        rotated_left_x, rotated_left_y = robot.direction.rotated(1.57)
-
-        first = (self.x, self.y)
-        second = (self.x + (self.sensor_left.length * rotated_left_x), self.y + (self.sensor_left.length * rotated_left_y))
+        xs, ys = interval_range(current_location, sensor_end)
         
-        xs, ys = interval_range(first, second)
-            
-        for x, y in zip(xs, ys):
+        sensor.end_point = sensor_end
+        for i, (x, y) in enumerate(zip(xs, ys)):
             if (int(round(x)), int(round(y))) in obstacles.coords:
-                print("FOUND OBSTACLE")
-                # Suggest rotate sligtly right
-                return -0.3
-
+                # print("FOUND OBSTACLE")
+                sensor.end_point = (x, y)
+                # Suggest rotate right, harder rotate the closer the obstacle
+                return max_robot_rotation * (1 - (i/len(xs)))
         return 0
-            
-    def checkRightSensor(self, obstacles):
-        # Get direction vector of 90 degrees left
-        rotated_right_x, rotated_right_y = robot.direction.rotated(-1.57)
-
-        first = (self.x, self.y)
-        second = (self.x + (self.sensor_left.length * rotated_right_x), self.y + (self.sensor_left.length * rotated_right_y))
-        
-        xs, ys = interval_range(first, second)
-            
-        for x, y in zip(xs, ys):
-            if (int(round(x)), int(round(y))) in obstacles.coords:
-                print("FOUND OBSTACLE")
-                # Suggest rotate slightly left
-                return 0.3
-                        
-        return 0
-    
-    def checkSensors(self, obstacles):
+  
+    def checkSensors(self):
+        # Sum all of the suggested rotations give by each sensor
         rotation = 0
-        rotation += self.checkCentreSensor(obstacles)
-        rotation += self.checkLeftSensor(obstacles)
-        rotation += self.checkRightSensor(obstacles)
+        if random.randint(0, 1) == 0:
+            rotation += self.checkSensor(self.sensor_centre, 1.2)
+        else:
+            rotation += self.checkSensor(self.sensor_centre, -1.2)
+        rotation += self.checkSensor(self.sensor_mid_left, -1.0)
+        rotation += self.checkSensor(self.sensor_mid_right, 1.0)
+        rotation += self.checkSensor(self.sensor_left, -0.8)
+        rotation += self.checkSensor(self.sensor_right, 0.8)
         return rotation
             
-    def move(self, obstacles):
-        rotation = self.checkSensors(obstacles)
+    def move(self):
+        rotation = self.checkSensors()
         
         # If no rotation suggested, random walk
         if rotation == 0:
             rotation = 0.05 * np.random.randn()
         
-        print("ROTATING BY:", rotation)
+        # print("ROTATING BY:", rotation)
         robot.direction.rotate(rotation)
 
-        print("MOVING", self.direction.x, self.direction.y)
+        # print("MOVING", self.direction.x, self.direction.y)
         
-        self.x += self.direction.x
-        self.y += self.direction.y
+        self.x += self.direction.x * speed
+        self.y += self.direction.y * speed
 
 
 
 class Obstacles:
     def __init__(self, plot_size):
         self.coords = set()
-        self.obstacles = [[(60, 60), (60, 70), (70, 70), (70, 60)], 
-                          [(10, 25), (25, 25), (25, 10)]]
+        self.obstacles = [[(55, 55), (55, 65), (65, 65), (65, 55)], 
+                          [(10, 80), (20, 80), (20, 40)]]
         
         self.addOuterWalls(plot_size)
         
@@ -164,7 +137,7 @@ class Obstacles:
 
 
 def interval_range(first, second):
-    n_intervals = max(abs(first[0] - second[0]), abs(first[1] - second[1]))
+    n_intervals = int(max(abs(first[0] - second[0]), abs(first[1] - second[1])))
     
     if first[0] != second[0]:
         x_step = (second[0] - first[0])/n_intervals
@@ -200,36 +173,60 @@ def display_sensors():
              [robot.y, robot.y + (robot.sensor_centre.length * robot.direction.y)], 
              color='r')
     
-    rotated_left_x, rotated_left_y = robot.direction.rotated(1.57)
+    rotated_left_x, rotated_left_y = robot.direction.rotated(robot.sensor_mid_left.rotation)
+    plt.plot([robot.x, robot.x + (robot.sensor_mid_left.length * rotated_left_x)], 
+            [robot.y, robot.y + (robot.sensor_mid_left.length * rotated_left_y)], 
+            color='r')
+    
+    rotated_right_x, rotated_right_y = robot.direction.rotated(robot.sensor_mid_right.rotation)
+    plt.plot([robot.x, robot.x + (robot.sensor_mid_right.length * rotated_right_x)], 
+            [robot.y, robot.y + (robot.sensor_mid_right.length * rotated_right_y)], 
+            color='r')
+    
+    rotated_left_x, rotated_left_y = robot.direction.rotated(robot.sensor_left.rotation)
     plt.plot([robot.x, robot.x + (robot.sensor_left.length * rotated_left_x)], 
             [robot.y, robot.y + (robot.sensor_left.length * rotated_left_y)], 
             color='r')
     
-    rotated_right_x, rotated_right_y = robot.direction.rotated(-1.57)
+    rotated_right_x, rotated_right_y = robot.direction.rotated(robot.sensor_right.rotation)
     plt.plot([robot.x, robot.x + (robot.sensor_right.length * rotated_right_x)], 
             [robot.y, robot.y + (robot.sensor_right.length * rotated_right_y)], 
             color='r')
+    
+# def display_sensors():
+#     plt.plot([robot.x, robot.sensor_centre.end_point[0]], 
+#              [robot.y, robot.sensor_centre.end_point[1]], 
+#              color='r')
+    
+#     plt.plot([robot.x, robot.sensor_left.end_point[0]], 
+#             [robot.y, robot.sensor_left.end_point[1]], 
+#             color='r')
+    
+#     plt.plot([robot.x, robot.sensor_right.end_point[0]], 
+#             [robot.y, robot.sensor_right.end_point[1]], 
+#             color='r')
 
 
 def animate(i):
+    robot.move()
+
     plt.clf()
-    
-    # Plot Robot
-    plt.plot([robot.x], [robot.y], '.', color='b', markersize=robot.size)
     
     display_obstacles()
     display_sensors()
+    # Plot Robot
+    plt.plot([robot.x], [robot.y], '.', color='b', markersize=robot.size)
 
     plt.xlim(0, plot_size)
     plt.ylim(0, plot_size)
     plt.gca().set_aspect('equal', adjustable='box')
-
     
-    robot.move(obstacles)
 
 
+
+speed = 1
 plot_size = 100
-robot = Robot(plot_size)
+robot = Robot(speed=speed, start_x=plot_size//2, start_y=plot_size//2)
 obstacles = Obstacles(plot_size)
 
 fig = plt.figure()
