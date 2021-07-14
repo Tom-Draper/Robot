@@ -259,6 +259,9 @@ def setup():
     plt.xlim(0, plot_size)
     plt.ylim(0, plot_size)
     plt.gca().set_aspect('equal', adjustable='box')
+    plt.xticks([])
+    plt.yticks([])
+    # plt.tick_params(axis='both', left='off', top='off', right='off', bottom='off', labelleft='off', labeltop='off', labelright='off', labelbottom='off')
     
     for robot in robots:
         graph_robot(robot)
