@@ -245,10 +245,10 @@ def setup():
     plot_size = 100
     # robot1 = Robot(start_x=plot_size//2, start_y=plot_size//2, colour='b')
     robot1 = Robot(start_x=7, start_y=7, colour='c')
-    # robot2 = Robot(start_x=7, start_y=7, colour='b')
-    # robot3 = Robot(start_x=7, start_y=7, colour='g')
-    # robot4 = Robot(start_x=7, start_y=7, colour='k')
-    robots = [robot1]
+    robot2 = Robot(start_x=7, start_y=7, colour='b')
+    robot3 = Robot(start_x=7, start_y=7, colour='g')
+    robot4 = Robot(start_x=7, start_y=7, colour='k')
+    robots = [robot1, robot2, robot3, robot4]
     
     obstacles = Obstacles(plot_size)
     
