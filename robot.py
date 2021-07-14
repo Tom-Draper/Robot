@@ -3,6 +3,58 @@ import matplotlib.animation as animation
 import numpy as np
 import random
 
+
+def remove_duplicates(seq):
+    seen = set()
+    seen_add = seen.add
+    return [x for x in seq if not (x in seen or seen_add(x))]
+
+def interval_range(p1, p2):
+    """Create a list of the integer (x,y) points between two 2D points."""
+    
+    # Extra sensitivity to boost the number of intervals to avoid skipping a 
+    # coordinate when rounded to integers
+    # Sensitivity of 1 resulted in some robots clipping inside obstacles
+    # High sensitivity -> more duplicate coordinates examined
+    # Low sensitivity -> more change of valid integer (x, y) points between p1 and p2 accidentally missed
+    sensitivity = 2
+    
+    # Decide the number of 
+    n_intervals = int( max(abs(p1[0] - p2[0]), abs(p1[1] - p2[1])) * sensitivity ) 
+    
+    if p1[0] != p2[0]:
+        x_step = (p2[0] - p1[0])/n_intervals
+    else:
+        x_step = 0
+        
+    if (p1[1] != p2[1]):
+        y_step = (p2[1] - p1[1])/n_intervals
+    else:
+        y_step = 0
+
+    if x_step == 0:
+        # Single value duplicated as many times as we need for ys
+        xs = [p1[0]] * max(1, n_intervals)
+    else:
+        xs = np.arange(start=p1[0], stop=p2[0], step=x_step)
+        
+    if y_step == 0:
+        # Single value duplicated as many times as we need for xs 
+        ys = [p1[1]] * max(1, n_intervals)
+    else:
+        ys = np.arange(start=p1[1], stop=p2[1], step=y_step)
+        
+    # Round each value to the nearest integer
+    xs = map(int, xs)
+    ys = map(int, ys)
+    
+    # Remove diplicate (x,y) points from list but preserve order (ordered unique points from p1 to p2)
+    points = remove_duplicates(list(zip(xs, ys)))
+
+    return points
+
+
+
 class Vector:
     def __init__(self, x, y):
         self.x = x
@@ -58,7 +110,7 @@ class Robot:
         # individually removed with each animation loop
         self.graph_components = []
     
-    def checkSensor(self, sensor, max_robot_rotation, obstacles):
+    def check_sensor(self, sensor, max_robot_rotation, obstacles):
         # Get vector direction for this sensor
         sensor_x, sensor_y = self.direction.rotated(sensor.rotation)
 
@@ -70,7 +122,7 @@ class Robot:
         sensor.end_point = Vector(sensor_end[0], sensor_end[1])
         for i, point in enumerate(points):
             if point in obstacles.coords:
-                print("FOUND OBSTACLE")
+                # print("FOUND OBSTACLE")
                 # Overwrite with the point where the sensor hits the obstacle
                 sensor.end_point = Vector(point[0], point[1])
                 # Suggest rotate right, harder rotate the closer the obstacle
@@ -79,17 +131,19 @@ class Robot:
             
         return 0
   
-    def checkSensors(self, obstacles):
-        # Sum all of the suggested rotations give by each sensor
+    def check_sensors(self, obstacles):
+        """Sum all of the suggested rotations give by each sensor"""      
         rotation = 0
-        if random.randint(0, 1) == 0:
-            rotation += self.checkSensor(self.sensor_centre, 1.2, obstacles)
+        # Randomly choose direction to turn in if obstacle found by central sensor
+        if random.randint(0, 1) == 0:  
+            rotation += self.check_sensor(self.sensor_centre, 1.2, obstacles)
         else:
-            rotation += self.checkSensor(self.sensor_centre, -1.2, obstacles)
-        rotation += self.checkSensor(self.sensor_mid_left, -0.85, obstacles)
-        rotation += self.checkSensor(self.sensor_mid_right, 0.85, obstacles)
-        rotation += self.checkSensor(self.sensor_left, -0.6, obstacles)
-        rotation += self.checkSensor(self.sensor_right, 0.6, obstacles)
+            rotation += self.check_sensor(self.sensor_centre, -1.2, obstacles)
+            
+        rotation += self.check_sensor(self.sensor_mid_left, -0.85, obstacles)
+        rotation += self.check_sensor(self.sensor_mid_right, 0.85, obstacles)
+        rotation += self.check_sensor(self.sensor_left, -0.6, obstacles)
+        rotation += self.check_sensor(self.sensor_right, 0.6, obstacles)
         return rotation
             
     def move(self, obstacles):
@@ -97,7 +151,7 @@ class Robot:
         self.x += self.direction.x * self.speed
         self.y += self.direction.y * self.speed
         
-        rotation = self.checkSensors(obstacles)
+        rotation = self.check_sensors(obstacles)
                 
         # If no rotation suggested, random walk
         if rotation == 0:
@@ -110,16 +164,16 @@ class Robot:
 class Obstacles:
     def __init__(self, plot_size):
         self.coords = set()
-        self.obstacles = [[(55, 55), (55, 65), (65, 65), (65, 55)], 
-                          [(10, 80), (20, 80), (20, 40)],
-                          [(55, 15), (55, 25), (80, 25), (80, 15)], 
-                          ]
-        
-        # self.obstacles = [ [(10, 10), (10, 45), (45, 45), (45, 10)],
-        #                   [(55, 55), (55, 90), (90, 90), (90, 55)],
-        #                   [(10, 55), (10, 90), (45, 90), (45, 55)],
-        #                   [(55, 10), (55, 45), (90, 45), (90, 10)]
+        # self.obstacles = [[(55, 55), (55, 65), (65, 65), (65, 55)], 
+        #                   [(10, 80), (20, 80), (20, 40)],
+        #                   [(55, 15), (55, 25), (80, 25), (80, 15)], 
         #                   ]
+        
+        self.obstacles = [ [(10, 10), (10, 45), (45, 45), (45, 10)],
+                          [(55, 55), (55, 90), (90, 90), (90, 55)],
+                          [(10, 55), (10, 90), (45, 90), (45, 55)],
+                          [(55, 10), (55, 45), (90, 45), (90, 10)]
+                          ]
         
         self.addOuterWalls(plot_size)
         
@@ -158,40 +212,6 @@ class Obstacles:
             self.coords.add(point)
 
 
-def interval_range(p1, p2):
-    """Create a list of the integer (x,y) points between two 2D points."""
-    
-    n_intervals = int(max(abs(p1[0] - p2[0]), abs(p1[1] - p2[1])))
-    
-    if p1[0] != p2[0]:
-        x_step = (p2[0] - p1[0])/n_intervals
-    else:
-        x_step = 0
-        
-    if (p1[1] != p2[1]):
-        y_step = (p2[1] - p1[1])/n_intervals
-    else:
-        y_step = 0
-
-    if x_step == 0:
-        # Single value duplicated as many times as we need for ys
-        xs = [p1[0]] * max(1, n_intervals)
-    else:
-        xs = np.arange(start=p1[0], stop=p2[0], step=x_step)
-        
-    if y_step == 0:
-        # Single value duplicated as many times as we need for xs 
-        ys = [p1[1]] * max(1, n_intervals)
-    else:
-        ys = np.arange(start=p1[1], stop=p2[1], step=y_step)
-        
-    # Round each value to the nearest integer
-    xs = map(int, xs)
-    ys = map(int, ys)
-    
-    points = list(zip(xs, ys))
-    return points
-
 
 def display_obstacles(obstacles):    
     for obstacle in obstacles.obstacles:        
@@ -223,9 +243,12 @@ def animate(i, robots, obstacles):
 
 def setup():
     plot_size = 100
-    robot1 = Robot(start_x=plot_size//2, start_y=plot_size//2, colour='b')
-    robot2 = Robot(start_x=20, start_y=20, colour='g')
-    robots = [robot1, robot2]
+    # robot1 = Robot(start_x=plot_size//2, start_y=plot_size//2, colour='b')
+    robot1 = Robot(start_x=7, start_y=7, colour='c')
+    # robot2 = Robot(start_x=7, start_y=7, colour='b')
+    # robot3 = Robot(start_x=7, start_y=7, colour='g')
+    # robot4 = Robot(start_x=7, start_y=7, colour='k')
+    robots = [robot1]
     
     obstacles = Obstacles(plot_size)
     
